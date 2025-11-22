@@ -103,6 +103,145 @@ require(['vs/editor/editor.main'], function () {
         }
     }
 
+    // --- Format Detection & Conversion ---
+    function detectFormat(filename, content) {
+        const formatSelect = document.getElementById('format-select').value;
+        if (formatSelect !== 'auto') return formatSelect;
+
+        const ext = filename.split('.').pop().toLowerCase();
+        if (ext === 'xml') return 'xml';
+        if (ext === 'csv') return 'csv';
+        if (ext === 'xlsx' || ext === 'xls') return 'excel';
+        if (ext === 'yaml' || ext === 'yml') return 'yaml';
+
+        // Content-based detection
+        if (content.trim().startsWith('<')) return 'xml';
+        if (content.includes('\n') && content.includes(',')) return 'csv';
+
+        return 'json';
+    }
+
+    function xmlToJson(xmlString) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+
+        if (xmlDoc.getElementsByTagName('parsererror').length) {
+            throw new Error('Invalid XML');
+        }
+
+        function parseNode(node) {
+            if (node.nodeType === 3) return node.nodeValue; // Text node
+
+            const obj = {};
+
+            // Attributes
+            if (node.attributes && node.attributes.length > 0) {
+                obj['@attributes'] = {};
+                for (let attr of node.attributes) {
+                    obj['@attributes'][attr.name] = attr.value;
+                }
+            }
+
+            // Child nodes
+            if (node.childNodes && node.childNodes.length > 0) {
+                for (let child of node.childNodes) {
+                    if (child.nodeType === 3 && child.nodeValue.trim() === '') continue;
+
+                    const childName = child.nodeName;
+                    const childValue = parseNode(child);
+
+                    if (obj[childName]) {
+                        if (!Array.isArray(obj[childName])) {
+                            obj[childName] = [obj[childName]];
+                        }
+                        obj[childName].push(childValue);
+                    } else {
+                        obj[childName] = childValue;
+                    }
+                }
+            }
+
+            return Object.keys(obj).length === 0 ? null : obj;
+        }
+
+        return parseNode(xmlDoc.documentElement);
+    }
+
+    function csvToJson(csvString) {
+        const result = Papa.parse(csvString, {
+            header: true,
+            skipEmptyLines: true,
+            dynamicTyping: true
+        });
+
+        if (result.errors.length > 0) {
+            console.warn('CSV parsing errors:', result.errors);
+        }
+
+        return result.data;
+    }
+
+    function excelToJson(file, callback) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+            callback(jsonData);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function yamlToJson(yamlString) {
+        return jsyaml.load(yamlString);
+    }
+
+    function convertToJson(content, format, filename, callback) {
+        try {
+            let jsonObj;
+
+            switch (format) {
+                case 'xml':
+                    jsonObj = xmlToJson(content);
+                    break;
+                case 'csv':
+                    jsonObj = csvToJson(content);
+                    break;
+                case 'yaml':
+                    jsonObj = yamlToJson(content);
+                    break;
+                case 'json':
+                default:
+                    jsonObj = JSON.parse(content);
+            }
+
+            callback(JSON.stringify(jsonObj, null, 4));
+        } catch (e) {
+            console.error('Format conversion error:', e);
+            callback(content); // Return original on error
+        }
+    }
+
+    // --- Schema Validation ---
+    let schemaValidator = null;
+
+    function validateWithSchema(jsonString) {
+        if (!schemaValidator) return { valid: true };
+
+        try {
+            const data = JSON.parse(jsonString);
+            const valid = schemaValidator(data);
+
+            return {
+                valid: valid,
+                errors: schemaValidator.errors || []
+            };
+        } catch (e) {
+            return { valid: false, errors: [{ message: 'Invalid JSON' }] };
+        }
+    }
+
     function sortObject(obj) {
         if (typeof obj !== 'object' || obj === null) return obj;
         if (Array.isArray(obj)) return obj.map(sortObject);
@@ -161,6 +300,128 @@ require(['vs/editor/editor.main'], function () {
         return applyAdvancedFilters(text);
     }
 
+    // --- Diff Export Functions ---
+    function generateDiffSummary() {
+        const original = originalModel.getValue();
+        const modified = modifiedModel.getValue();
+
+        try {
+            const origObj = JSON.parse(original);
+            const modObj = JSON.parse(modified);
+
+            const changes = findChanges(origObj, modObj);
+            return `Diff Summary:\n- ${changes.added} fields added\n- ${changes.modified} fields modified\n- ${changes.deleted} fields deleted\n- Total changes: ${changes.total}`;
+        } catch (e) {
+            return 'Unable to generate summary (invalid JSON)';
+        }
+    }
+
+    function findChanges(obj1, obj2, path = '') {
+        let added = 0, modified = 0, deleted = 0;
+
+        const allKeys = new Set([...Object.keys(obj1 || {}), ...Object.keys(obj2 || {})]);
+
+        for (const key of allKeys) {
+            const newPath = path ? `${path}.${key}` : key;
+
+            if (!(key in obj1)) {
+                added++;
+            } else if (!(key in obj2)) {
+                deleted++;
+            } else if (typeof obj1[key] === 'object' && typeof obj2[key] === 'object') {
+                const nested = findChanges(obj1[key], obj2[key], newPath);
+                added += nested.added;
+                modified += nested.modified;
+                deleted += nested.deleted;
+            } else if (obj1[key] !== obj2[key]) {
+                modified++;
+            }
+        }
+
+        return { added, modified, deleted, total: added + modified + deleted };
+    }
+
+    function exportAsHTML() {
+        const original = originalModel.getValue();
+        const modified = modifiedModel.getValue();
+        const summary = generateDiffSummary();
+
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+    <title>JSON Comparison Report</title>
+    <style>
+        body { font-family: 'Courier New', monospace; margin: 20px; background: #1e1e1e; color: #d4d4d4; }
+        h1 { color: #4ec9b0; }
+        .summary { background: #252526; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .container { display: flex; gap: 20px; }
+        .pane { flex: 1; background: #252526; padding: 15px; border-radius: 5px; }
+        pre { margin: 0; white-space: pre-wrap; }
+        .added { background: #1e4620; }
+        .deleted { background: #5a1d1d; }
+    </style>
+</head>
+<body>
+    <h1>JSON Comparison Report</h1>
+    <div class="summary"><pre>${summary}</pre></div>
+    <div class="container">
+        <div class="pane">
+            <h2>Original</h2>
+            <pre>${escapeHtml(original)}</pre>
+        </div>
+        <div class="pane">
+            <h2>Modified</h2>
+            <pre>${escapeHtml(modified)}</pre>
+        </div>
+    </div>
+</body>
+</html>`;
+
+        downloadFile(html, 'comparison-report.html', 'text/html');
+    }
+
+    function exportAsMarkdown() {
+        const original = originalModel.getValue();
+        const modified = modifiedModel.getValue();
+        const summary = generateDiffSummary();
+
+        const markdown = `# JSON Comparison Report
+
+## Summary
+\`\`\`
+${summary}
+\`\`\`
+
+## Original
+\`\`\`json
+${original}
+\`\`\`
+
+## Modified
+\`\`\`json
+${modified}
+\`\`\`
+`;
+
+        downloadFile(markdown, 'comparison-report.md', 'text/markdown');
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
     // --- Local History ---
     function saveState() {
         const state = {
@@ -215,25 +476,52 @@ require(['vs/editor/editor.main'], function () {
 
     // --- Event Listeners ---
 
-    // File Inputs
+    // File Inputs with Format Conversion
     document.getElementById('file-left').addEventListener('change', (e) => {
         if (e.target.files[0]) {
             const file = e.target.files[0];
             document.getElementById('filename-left').textContent = file.name;
-            readFile(file, (text) => {
-                originalRaw = text;
-                originalModel.setValue(text);
-            });
+
+            const format = detectFormat(file.name, '');
+
+            if (format === 'excel') {
+                excelToJson(file, (jsonData) => {
+                    const jsonString = JSON.stringify(jsonData, null, 4);
+                    originalRaw = jsonString;
+                    originalModel.setValue(jsonString);
+                });
+            } else {
+                readFile(file, (text) => {
+                    convertToJson(text, format, file.name, (jsonString) => {
+                        originalRaw = jsonString;
+                        originalModel.setValue(jsonString);
+                    });
+                });
+            }
         }
     });
+
     document.getElementById('file-right').addEventListener('change', (e) => {
         if (e.target.files[0]) {
             const file = e.target.files[0];
             document.getElementById('filename-right').textContent = file.name;
-            readFile(file, (text) => {
-                modifiedRaw = text;
-                modifiedModel.setValue(text);
-            });
+
+            const format = detectFormat(file.name, '');
+
+            if (format === 'excel') {
+                excelToJson(file, (jsonData) => {
+                    const jsonString = JSON.stringify(jsonData, null, 4);
+                    modifiedRaw = jsonString;
+                    modifiedModel.setValue(jsonString);
+                });
+            } else {
+                readFile(file, (text) => {
+                    convertToJson(text, format, file.name, (jsonString) => {
+                        modifiedRaw = jsonString;
+                        modifiedModel.setValue(jsonString);
+                    });
+                });
+            }
         }
     });
 
@@ -306,6 +594,67 @@ require(['vs/editor/editor.main'], function () {
         diffEditor.updateOptions({ renderSideBySide: isSideBySide });
         e.target.textContent = isSideBySide ? 'Split View' : 'Inline View';
     });
+    // Schema Validation
+    document.getElementById('schema-file').addEventListener('change', (e) => {
+        if (e.target.files[0]) {
+            const file = e.target.files[0];
+            readFile(file, (text) => {
+                try {
+                    const schema = JSON.parse(text);
+                    const ajv = new Ajv7();
+                    schemaValidator = ajv.compile(schema);
+                    document.getElementById('schema-status').textContent = '✓ Schema loaded';
+                    document.getElementById('schema-status').style.color = '#4ec9b0';
+
+                    // Validate current content
+                    const leftValidation = validateWithSchema(originalModel.getValue());
+                    const rightValidation = validateWithSchema(modifiedModel.getValue());
+
+                    if (!leftValidation.valid || !rightValidation.valid) {
+                        console.warn('Schema validation errors:', { left: leftValidation.errors, right: rightValidation.errors });
+                    }
+                } catch (e) {
+                    document.getElementById('schema-status').textContent = '✗ Invalid schema';
+                    document.getElementById('schema-status').style.color = '#f48771';
+                    console.error('Schema error:', e);
+                }
+            });
+        }
+    });
+
+    // Export Menu Toggle
+    document.getElementById('export-btn').addEventListener('click', () => {
+        const menu = document.getElementById('export-menu');
+        menu.classList.toggle('hidden');
+    });
+
+    // Close export menu when clicking outside
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('export-menu');
+        const btn = document.getElementById('export-btn');
+        if (!menu.contains(e.target) && e.target !== btn) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    // Export Options
+    document.getElementById('export-html').addEventListener('click', () => {
+        exportAsHTML();
+        document.getElementById('export-menu').classList.add('hidden');
+    });
+
+    document.getElementById('export-markdown').addEventListener('click', () => {
+        exportAsMarkdown();
+        document.getElementById('export-menu').classList.add('hidden');
+    });
+
+    document.getElementById('copy-summary').addEventListener('click', () => {
+        const summary = generateDiffSummary();
+        navigator.clipboard.writeText(summary).then(() => {
+            alert('Summary copied to clipboard!');
+        });
+        document.getElementById('export-menu').classList.add('hidden');
+    });
 
     document.getElementById('share-btn').addEventListener('click', () => {
         const state = {
@@ -357,13 +706,36 @@ require(['vs/editor/editor.main'], function () {
         const files = e.dataTransfer.files;
         if (files.length === 0) return;
 
+        // Helper function to load file with format conversion
+        const loadFileWithConversion = (file, isLeft) => {
+            const format = detectFormat(file.name, '');
+            const filenameElement = isLeft ? 'filename-left' : 'filename-right';
+            const model = isLeft ? originalModel : modifiedModel;
+
+            document.getElementById(filenameElement).textContent = file.name;
+
+            if (format === 'excel') {
+                excelToJson(file, (jsonData) => {
+                    const jsonString = JSON.stringify(jsonData, null, 4);
+                    if (isLeft) originalRaw = jsonString;
+                    else modifiedRaw = jsonString;
+                    model.setValue(jsonString);
+                });
+            } else {
+                readFile(file, (text) => {
+                    convertToJson(text, format, file.name, (jsonString) => {
+                        if (isLeft) originalRaw = jsonString;
+                        else modifiedRaw = jsonString;
+                        model.setValue(jsonString);
+                    });
+                });
+            }
+        };
+
         // If user drops 2 files, load them into both
         if (files.length >= 2) {
-            document.getElementById('filename-left').textContent = files[0].name;
-            readFile(files[0], (text) => originalModel.setValue(text));
-
-            document.getElementById('filename-right').textContent = files[1].name;
-            readFile(files[1], (text) => modifiedModel.setValue(text));
+            loadFileWithConversion(files[0], true);
+            loadFileWithConversion(files[1], false);
             return;
         }
 
@@ -374,12 +746,10 @@ require(['vs/editor/editor.main'], function () {
 
             // If dropped on the right half, load to right editor
             if (dropX > windowWidth / 2) {
-                document.getElementById('filename-right').textContent = files[0].name;
-                readFile(files[0], (text) => modifiedModel.setValue(text));
+                loadFileWithConversion(files[0], false);
             } else {
                 // Otherwise default to left
-                document.getElementById('filename-left').textContent = files[0].name;
-                readFile(files[0], (text) => originalModel.setValue(text));
+                loadFileWithConversion(files[0], true);
             }
         }
     });

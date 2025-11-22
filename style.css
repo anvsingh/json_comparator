@@ -216,6 +216,56 @@ main {
     height: 100%;
 }
 
+/* Format Selector */
+.format-select {
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    margin-right: 0.5rem;
+}
+
+.format-select:hover {
+    border-color: var(--primary-color);
+}
+
+/* Export Menu */
+.export-menu {
+    position: absolute;
+    top: 7.5rem;
+    right: 1.5rem;
+    background-color: var(--header-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    min-width: 180px;
+}
+
+.export-option {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background-color 0.2s;
+}
+
+.export-option:hover {
+    background-color: var(--primary-color);
+}
+
+.export-menu.hidden {
+    display: none;
+}
+
 /* Drag Overlay */
 #drag-overlay {
     position: absolute;

@@ -32,13 +32,20 @@
             <div class="toolbar-group">
                 <label class="file-input-label btn secondary">
                     Upload Left
-                    <input type="file" id="file-left" accept=".json,.txt">
+                    <input type="file" id="file-left" accept=".json,.xml,.csv,.xlsx,.yaml,.yml,.txt">
                 </label>
                 <span id="filename-left" class="filename-display"></span>
-                <input type="text" id="url-left" placeholder="Enter URL for Left JSON" class="url-input">
+                <input type="text" id="url-left" placeholder="Enter URL for Left" class="url-input">
             </div>
 
             <div class="toolbar-actions">
+                <select id="format-select" class="format-select" title="Format Type">
+                    <option value="auto">Auto-detect</option>
+                    <option value="json">JSON</option>
+                    <option value="xml">XML</option>
+                    <option value="csv">CSV</option>
+                    <option value="yaml">YAML</option>
+                </select>
                 <button id="format-btn" class="btn primary" title="Format & Sort Keys">Format & Sort</button>
                 <button id="swap-btn" class="btn secondary" title="Swap Sides">Swap ⇄</button>
                 <button id="clear-btn" class="btn secondary" title="Clear All">Clear</button>
@@ -46,11 +53,11 @@
             </div>
 
             <div class="toolbar-group">
-                <input type="text" id="url-right" placeholder="Enter URL for Right JSON" class="url-input">
+                <input type="text" id="url-right" placeholder="Enter URL for Right" class="url-input">
                 <span id="filename-right" class="filename-display"></span>
                 <label class="file-input-label btn secondary">
                     Upload Right
-                    <input type="file" id="file-right" accept=".json,.txt">
+                    <input type="file" id="file-right" accept=".json,.xml,.csv,.xlsx,.yaml,.yml,.txt">
                 </label>
             </div>
         </div>
@@ -58,9 +65,24 @@
         <div class="toolbar toolbar-advanced">
             <div class="toolbar-group">
                 <input type="text" id="ignore-keys" placeholder="Ignore Keys (e.g. id, timestamp)" class="url-input"
-                    style="width: 300px;">
+                    style="width: 250px;">
                 <button id="apply-filters-btn" class="btn primary">Apply Ignore</button>
+
+                <label class="file-input-label btn secondary" style="margin-left: 1rem;">
+                    Schema
+                    <input type="file" id="schema-file" accept=".json">
+                </label>
+                <span id="schema-status" class="filename-display"></span>
+
+                <button id="export-btn" class="btn secondary" style="margin-left: 1rem;">Export Diff ▾</button>
             </div>
+        </div>
+
+        <!-- Export dropdown menu -->
+        <div id="export-menu" class="export-menu hidden">
+            <button id="export-html" class="export-option">Export as HTML</button>
+            <button id="export-markdown" class="export-option">Export as Markdown</button>
+            <button id="copy-summary" class="export-option">Copy Summary</button>
         </div>
 
         <main>
@@ -74,6 +96,12 @@
             <p>Powered by Monaco Editor</p>
         </footer>
     </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ajv/8.12.0/ajv7.min.js"></script>
 
     <!-- Load Monaco Editor -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
