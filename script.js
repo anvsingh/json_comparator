@@ -631,6 +631,24 @@ ${modified}
         diffEditor.updateOptions({ renderSideBySide: isSideBySide });
         e.target.textContent = isSideBySide ? 'Split View' : 'Inline View';
     });
+
+    // Fold/Unfold Toggle
+    let isFolded = false;
+    document.getElementById('fold-toggle-btn').addEventListener('click', (e) => {
+        isFolded = !isFolded;
+
+        if (isFolded) {
+            // Fold all regions
+            diffEditor.getOriginalEditor().getAction('editor.foldAll').run();
+            diffEditor.getModifiedEditor().getAction('editor.foldAll').run();
+            e.target.textContent = 'Unfold All';
+        } else {
+            // Unfold all regions
+            diffEditor.getOriginalEditor().getAction('editor.unfoldAll').run();
+            diffEditor.getModifiedEditor().getAction('editor.unfoldAll').run();
+            e.target.textContent = 'Fold All';
+        }
+    });
     // Schema Validation
     document.getElementById('schema-file').addEventListener('change', (e) => {
         if (e.target.files[0]) {
