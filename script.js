@@ -310,14 +310,26 @@ require(['vs/editor/editor.main'], function () {
             const modObj = JSON.parse(modified);
 
             const changes = findChanges(origObj, modObj);
-            return `Diff Summary:\n- ${changes.added} fields added\n- ${changes.modified} fields modified\n- ${changes.deleted} fields deleted\n- Total changes: ${changes.total}`;
+            let summary = `Diff Summary:\n- ${changes.added.length} fields added\n- ${changes.modified.length} fields modified\n- ${changes.deleted.length} fields deleted\n- Total changes: ${changes.total}\n`;
+
+            if (changes.added.length > 0) {
+                summary += `\nAdded:\n${changes.added.map(c => `  + ${c.path}: ${JSON.stringify(c.value)}`).join('\n')}`;
+            }
+            if (changes.modified.length > 0) {
+                summary += `\nModified:\n${changes.modified.map(c => `  ~ ${c.path}: ${JSON.stringify(c.oldValue)} → ${JSON.stringify(c.newValue)}`).join('\n')}`;
+            }
+            if (changes.deleted.length > 0) {
+                summary += `\nDeleted:\n${changes.deleted.map(c => `  - ${c.path}: ${JSON.stringify(c.value)}`).join('\n')}`;
+            }
+
+            return summary;
         } catch (e) {
             return 'Unable to generate summary (invalid JSON)';
         }
     }
 
     function findChanges(obj1, obj2, path = '') {
-        let added = 0, modified = 0, deleted = 0;
+        let added = [], modified = [], deleted = [];
 
         const allKeys = new Set([...Object.keys(obj1 || {}), ...Object.keys(obj2 || {})]);
 
@@ -325,20 +337,28 @@ require(['vs/editor/editor.main'], function () {
             const newPath = path ? `${path}.${key}` : key;
 
             if (!(key in obj1)) {
-                added++;
+                added.push({ path: newPath, value: obj2[key] });
             } else if (!(key in obj2)) {
-                deleted++;
-            } else if (typeof obj1[key] === 'object' && typeof obj2[key] === 'object') {
+                deleted.push({ path: newPath, value: obj1[key] });
+            } else if (typeof obj1[key] === 'object' && obj1[key] !== null &&
+                typeof obj2[key] === 'object' && obj2[key] !== null &&
+                !Array.isArray(obj1[key]) && !Array.isArray(obj2[key])) {
+                // Recurse for nested objects
                 const nested = findChanges(obj1[key], obj2[key], newPath);
-                added += nested.added;
-                modified += nested.modified;
-                deleted += nested.deleted;
-            } else if (obj1[key] !== obj2[key]) {
-                modified++;
+                added.push(...nested.added);
+                modified.push(...nested.modified);
+                deleted.push(...nested.deleted);
+            } else if (JSON.stringify(obj1[key]) !== JSON.stringify(obj2[key])) {
+                modified.push({ path: newPath, oldValue: obj1[key], newValue: obj2[key] });
             }
         }
 
-        return { added, modified, deleted, total: added + modified + deleted };
+        return {
+            added,
+            modified,
+            deleted,
+            total: added.length + modified.length + deleted.length
+        };
     }
 
     function exportAsHTML() {
@@ -353,17 +373,18 @@ require(['vs/editor/editor.main'], function () {
     <style>
         body { font-family: 'Courier New', monospace; margin: 20px; background: #1e1e1e; color: #d4d4d4; }
         h1 { color: #4ec9b0; }
-        .summary { background: #252526; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .summary { background: #252526; padding: 15px; border-radius: 5px; margin: 20px 0; white-space: pre-wrap; }
         .container { display: flex; gap: 20px; }
         .pane { flex: 1; background: #252526; padding: 15px; border-radius: 5px; }
         pre { margin: 0; white-space: pre-wrap; }
-        .added { background: #1e4620; }
-        .deleted { background: #5a1d1d; }
+        .added { color: #4ec9b0; }
+        .modified { color: #dcdcaa; }
+        .deleted { color: #f48771; }
     </style>
 </head>
 <body>
     <h1>JSON Comparison Report</h1>
-    <div class="summary"><pre>${summary}</pre></div>
+    <div class="summary"><pre>${escapeHtml(summary)}</pre></div>
     <div class="container">
         <div class="pane">
             <h2>Original</h2>
