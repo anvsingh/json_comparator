@@ -1,30 +1,47 @@
-# JSON Comparator Verification Walkthrough
+# JSON Comparator Walkthrough & Capabilities
 
-## Goal
-Verify that the JSON Comparator web application loads correctly and functions as expected.
+## Overview
+The JSON Comparator is now a fully-featured professional tool designed for developers to diff, format, and share JSON data. It goes beyond simple text comparison by offering semantic understanding and productivity workflows.
 
-## Steps
+## Current Capabilities
 
-1. **Open the Application**
-   - Open the file `index.html` in your web browser.
-   - You can do this by double-clicking the file in your file explorer or dragging it into a browser window.
-   - Path: `/home/anuj/.gemini/antigravity/scratch/json_comparator/index.html`
+### 1. Smart Data Input
+Getting data into the tool is seamless with multiple supported methods:
+- **Drag & Drop**: 
+    - Drag a file to the **Left Half** of the screen to load it into the Original view.
+    - Drag a file to the **Right Half** to load it into the Modified view.
+    - Drag **Two Files** at once to populate both sides instantly.
+- **File Upload**: Use the dedicated "Upload" buttons for standard file picking.
+- **URL Fetching**: Paste a URL (e.g., raw GitHub content) to fetch and load JSON directly.
+- **File Name Display**: The tool displays the name of the loaded file or "URL Loaded" for context.
 
-2. **Verify Layout**
-   - Check if the header "JSON Comparator" is visible.
-   - Ensure the dark theme is applied.
-   - Confirm there are two side-by-side editor panes.
+### 2. Semantic Comparison
+- **Format & Sort**: The "Killer Feature". It parses the JSON, recursively sorts all keys alphabetically, and pretty-prints the result. This allows you to compare JSON objects based on their *structure* rather than their key order (e.g., `{"a":1, "b":2}` == `{"b":2, "a":1}`).
+- **Robust Error Handling**: If one side contains invalid JSON, the tool gracefully warns you via the console but still formats the valid side.
 
-3. **Test Comparison**
-   - You should see default JSON content in both panes.
-   - **Left Pane (Original):** `{"name": "John Doe", "age": 30}`
-   - **Right Pane (Modified):** `{"name": "John Doe", "age": 31}`
-   - Verify that the line with `"age"` is highlighted to show the difference.
+### 3. Productivity Tools
+- **Swap Sides (⇄)**: Instantly exchange the content and filenames between the Original and Modified views.
+- **Clear All**: Reset both editors to a clean state.
+- **Split / Inline Toggle**: Switch between the standard side-by-side diff view and a unified inline view for different visualization preferences.
 
-4. **Test Editing**
-   - Try changing the JSON in the left or right pane.
-   - The diff view should update automatically to reflect your changes.
+### 4. Sharing & Export
+- **Share State**: Click "Share" to generate a URL containing the current JSON content (compressed in the URL parameters). This allows for instant sharing of specific comparison states with colleagues.
 
-5. **Test Syntax Highlighting**
-   - Type some invalid JSON (e.g., remove a quote).
-   - Verify that the editor shows a red squiggle indicating a syntax error.
+## Verification Checklist
+
+### Core Functionality
+- [x] **Application Loads**: Dark theme UI with toolbar and dual-pane editor.
+- [x] **Monaco Editor**: Syntax highlighting, error detection, and diff rendering are active.
+
+### Feature Verification
+- [x] **Drag & Drop**: 
+    - Dropping on left updates left editor.
+    - Dropping on right updates right editor.
+    - Dropping 2 files updates both.
+- [x] **URL Fetch**: Valid URLs load content; invalid URLs show an alert.
+- [x] **Format & Sort**: 
+    - Messy JSON is prettified.
+    - Key order is standardized.
+    - Invalid JSON on one side doesn't block the other.
+- [x] **Swap**: Content and filenames flip correctly.
+- [x] **Sharing**: "Share" button copies a valid URL; opening that URL restores the state.
