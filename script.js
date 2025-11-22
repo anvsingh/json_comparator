@@ -482,12 +482,8 @@ ${modified}
     let isProgrammaticUpdate = false;
 
     const onDidChange = (model, isOriginal) => {
-        // If filters are NOT active, manual edits update the source of truth (raw)
-        if (!areFiltersActive() && !isProgrammaticUpdate) {
-            if (isOriginal) originalRaw = originalModel.getValue();
-            else modifiedRaw = modifiedModel.getValue();
-        }
-
+        // Only save to localStorage, never overwrite raw state
+        // Raw state is the source of truth and should only be set by explicit actions
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(saveState, 1000);
     };
@@ -571,27 +567,33 @@ ${modified}
     // Toolbar Actions
     document.getElementById('format-btn').addEventListener('click', () => {
         isProgrammaticUpdate = true;
-        console.log('Applying filters to both sides...');
-        console.log('Ignore keys:', document.getElementById('ignore-keys').value);
+
+        // Sync raw state from editor if empty (for copy-pasted content)
+        if (!originalRaw.trim() && originalModel.getValue().trim()) {
+            originalRaw = originalModel.getValue();
+        }
+        if (!modifiedRaw.trim() && modifiedModel.getValue().trim()) {
+            modifiedRaw = modifiedModel.getValue();
+        }
 
         // Always filter from RAW source
         if (originalRaw.trim()) {
             const filtered = applyAdvancedFilters(originalRaw);
-            console.log('Left side filtered');
             originalModel.setValue(filtered);
         }
         if (modifiedRaw.trim()) {
             const filtered = applyAdvancedFilters(modifiedRaw);
-            console.log('Right side filtered');
             modifiedModel.setValue(filtered);
         }
 
-        isProgrammaticUpdate = false;
-        console.log('Filters applied to both sides');
+        // Force Monaco to refresh layout after setValue
+        requestAnimationFrame(() => {
+            diffEditor.layout();
+            isProgrammaticUpdate = false;
+        });
     });
 
     document.getElementById('apply-filters-btn').addEventListener('click', () => {
-        console.log('Apply Ignore button clicked');
         document.getElementById('format-btn').click();
     });
 
