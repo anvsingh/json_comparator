@@ -1,0 +1,68 @@
+:root {
+    --bg-color: #0f111a;
+    --header-bg: #1a1d2d;
+    --text-primary: #e6e6e6;
+    --text-secondary: #a0a0a0;
+    --accent-color: #6366f1;
+    --border-color: #2d3142;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+header {
+    background-color: var(--header-bg);
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+header h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+header p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+main {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+#editor-container {
+    width: 100%;
+    height: 100%;
+}
+
+footer {
+    background-color: var(--header-bg);
+    padding: 0.5rem 2rem;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
