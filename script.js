@@ -571,13 +571,27 @@ ${modified}
     // Toolbar Actions
     document.getElementById('format-btn').addEventListener('click', () => {
         isProgrammaticUpdate = true;
+        console.log('Applying filters to both sides...');
+        console.log('Ignore keys:', document.getElementById('ignore-keys').value);
+
         // Always filter from RAW source
-        if (originalRaw.trim()) originalModel.setValue(applyAdvancedFilters(originalRaw));
-        if (modifiedRaw.trim()) modifiedModel.setValue(applyAdvancedFilters(modifiedRaw));
+        if (originalRaw.trim()) {
+            const filtered = applyAdvancedFilters(originalRaw);
+            console.log('Left side filtered');
+            originalModel.setValue(filtered);
+        }
+        if (modifiedRaw.trim()) {
+            const filtered = applyAdvancedFilters(modifiedRaw);
+            console.log('Right side filtered');
+            modifiedModel.setValue(filtered);
+        }
+
         isProgrammaticUpdate = false;
+        console.log('Filters applied to both sides');
     });
 
     document.getElementById('apply-filters-btn').addEventListener('click', () => {
+        console.log('Apply Ignore button clicked');
         document.getElementById('format-btn').click();
     });
 
