@@ -24,7 +24,18 @@ Getting data into the tool is seamless with multiple supported methods:
 - **Clear All**: Reset both editors to a clean state.
 - **Split / Inline Toggle**: Switch between the standard side-by-side diff view and a unified inline view for different visualization preferences.
 
-### 4. Sharing & Export
+### 4. Theme Support
+- **Dark Theme**: The default professional look for low-light environments.
+- **Light Theme**: A clean, high-contrast look for bright environments.
+- **Warm Theme**: A sepia/solarized palette designed to reduce eye strain during long sessions.
+
+### 5. Advanced Filtering & Noise Reduction
+- **Ignore Keys**: Enter comma-separated keys (e.g., `id, timestamp, uuid`) to strip them from *both* sides before comparison. This is crucial for comparing API responses where dynamic fields create noise.
+
+### 6. Local History (Auto-Save)
+- **Persistence**: Your work is automatically saved to your browser's local storage. If you accidentally refresh or close the tab, your JSON and filenames will be restored when you return.
+
+### 7. Sharing & Export
 - **Share State**: Click "Share" to generate a URL containing the current JSON content (compressed in the URL parameters). This allows for instant sharing of specific comparison states with colleagues.
 
 ## Verification Checklist
@@ -34,10 +45,17 @@ Getting data into the tool is seamless with multiple supported methods:
 - [x] **Monaco Editor**: Syntax highlighting, error detection, and diff rendering are active.
 
 ### Feature Verification
+- [x] **Theme Toggle**:
+    - Switching to **Light** changes background to white and editor to light theme.
+    - Switching to **Warm** changes background to sepia and editor to light theme.
+    - Switching back to **Dark** restores the default look.
 - [x] **Drag & Drop**: 
     - Dropping on left updates left editor.
     - Dropping on right updates right editor.
     - Dropping 2 files updates both.
+- [x] **Advanced Features**:
+    - **Ignore Keys**: Adding `id` removes `id` fields from the diff view.
+    - **Local History**: Refreshing the page restores the previous content.
 - [x] **URL Fetch**: Valid URLs load content; invalid URLs show an alert.
 - [x] **Format & Sort**: 
     - Messy JSON is prettified.

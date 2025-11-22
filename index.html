@@ -18,6 +18,11 @@
                 <h1>JSON Comparator</h1>
             </div>
             <div class="header-right">
+                <select id="theme-select" class="theme-select">
+                    <option value="dark">Dark Theme</option>
+                    <option value="light">Light Theme</option>
+                    <option value="warm">Warm Theme</option>
+                </select>
                 <button id="share-btn" class="btn secondary">Share</button>
                 <a href="https://github.com/anvsingh/json-comparator" target="_blank" class="github-link">GitHub</a>
             </div>
@@ -47,6 +52,14 @@
                     Upload Right
                     <input type="file" id="file-right" accept=".json,.txt">
                 </label>
+            </div>
+        </div>
+
+        <div class="toolbar toolbar-advanced">
+            <div class="toolbar-group">
+                <input type="text" id="ignore-keys" placeholder="Ignore Keys (e.g. id, timestamp)" class="url-input"
+                    style="width: 300px;">
+                <button id="apply-filters-btn" class="btn primary">Apply Ignore</button>
             </div>
         </div>
 

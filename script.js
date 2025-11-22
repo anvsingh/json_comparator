@@ -19,23 +19,69 @@ require(['vs/editor/editor.main'], function () {
     });
 
     // --- State Management ---
-    // Check for shared state in URL
+    let originalRaw = '';
+    let modifiedRaw = '';
+
+    // 1. Check for shared state in URL
     const urlParams = new URLSearchParams(window.location.search);
     const sharedState = urlParams.get('state');
+
     if (sharedState) {
         try {
             const decoded = JSON.parse(atob(sharedState));
-            originalModel.setValue(decoded.original || '');
-            modifiedModel.setValue(decoded.modified || '');
+            originalRaw = decoded.original || '';
+            modifiedRaw = decoded.modified || '';
+            originalModel.setValue(originalRaw);
+            modifiedModel.setValue(modifiedRaw);
             // Clean URL
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (e) {
             console.error('Failed to load shared state', e);
         }
     } else {
-        // Load defaults if empty
-        originalModel.setValue('{\n\t"name": "John Doe",\n\t"age": 30\n}');
-        modifiedModel.setValue('{\n\t"name": "John Doe",\n\t"age": 31\n}');
+        // 2. Try to load from Local History
+        if (!loadState()) {
+            // 3. Load defaults if nothing else found
+            const defaultOriginal = {
+                "product": {
+                    "id": "p-1001",
+                    "name": "SuperWidget 3000",
+                    "price": 29.99,
+                    "tags": ["gadget", "new", "sale"],
+                    "specs": {
+                        "weight": "200g",
+                        "dimensions": { "width": 10, "height": 20 }
+                    }
+                },
+                "metadata": {
+                    "created_at": "2023-10-27T10:00:00Z",
+                    "updated_by": "admin"
+                }
+            };
+
+            const defaultModified = {
+                "product": {
+                    "id": "p-1001",
+                    "name": "SuperWidget 3000 Pro", // Changed
+                    "price": 39.99, // Changed
+                    "tags": ["gadget", "premium"], // Changed
+                    "specs": {
+                        "weight": "180g", // Changed
+                        "dimensions": { "width": 10, "height": 20 }
+                    }
+                },
+                "metadata": {
+                    "created_at": "2023-10-27T10:00:00Z",
+                    "updated_by": "system" // Changed
+                }
+            };
+
+            originalRaw = JSON.stringify(defaultOriginal, null, 4);
+            modifiedRaw = JSON.stringify(defaultModified, null, 4);
+
+            originalModel.setValue(originalRaw);
+            modifiedModel.setValue(modifiedRaw);
+        }
     }
 
     // --- Helper Functions ---
@@ -67,16 +113,105 @@ require(['vs/editor/editor.main'], function () {
         }, {});
     }
 
-    function formatAndSort(text) {
+    function removeKeys(obj, keysToRemove) {
+        if (typeof obj !== 'object' || obj === null) return obj;
+        if (Array.isArray(obj)) return obj.map(item => removeKeys(item, keysToRemove));
+
+        return Object.keys(obj).reduce((acc, key) => {
+            if (!keysToRemove.includes(key)) {
+                acc[key] = removeKeys(obj[key], keysToRemove);
+            }
+            return acc;
+        }, {});
+    }
+
+    function areFiltersActive() {
+        const ignoreInput = document.getElementById('ignore-keys').value.trim();
+        return !!ignoreInput;
+    }
+
+    function applyAdvancedFilters(text) {
         try {
-            const obj = JSON.parse(text);
+            let obj = JSON.parse(text);
+
+            // 1. Ignore Keys
+            const ignoreInput = document.getElementById('ignore-keys').value.trim();
+            if (ignoreInput && typeof obj === 'object' && obj !== null) {
+                const keysToRemove = ignoreInput.split(',').map(k => k.trim());
+                obj = removeKeys(obj, keysToRemove);
+            }
+
+            // 2. Sort & Format
+            // If it's a primitive (string/number/boolean), just return it as string
+            if (typeof obj !== 'object' || obj === null) {
+                return String(obj);
+            }
+
+            // Otherwise sort and stringify
             const sorted = sortObject(obj);
             return JSON.stringify(sorted, null, 4);
         } catch (e) {
-            alert('Invalid JSON content. Cannot format.');
+            console.warn('Cannot process content', e);
             return text;
         }
     }
+
+    function formatAndSort(text) {
+        // Now delegates to the advanced pipeline
+        return applyAdvancedFilters(text);
+    }
+
+    // --- Local History ---
+    function saveState() {
+        const state = {
+            original: originalRaw, // Save RAW state, not filtered state
+            modified: modifiedRaw,
+            originalName: document.getElementById('filename-left').textContent,
+            modifiedName: document.getElementById('filename-right').textContent
+        };
+        localStorage.setItem('jsonComparatorState', JSON.stringify(state));
+    }
+
+    function loadState() {
+        const saved = localStorage.getItem('jsonComparatorState');
+        if (saved) {
+            try {
+                const state = JSON.parse(saved);
+                if (state.original) {
+                    originalRaw = state.original;
+                    originalModel.setValue(originalRaw);
+                }
+                if (state.modified) {
+                    modifiedRaw = state.modified;
+                    modifiedModel.setValue(modifiedRaw);
+                }
+                if (state.originalName) document.getElementById('filename-left').textContent = state.originalName;
+                if (state.modifiedName) document.getElementById('filename-right').textContent = state.modifiedName;
+                return true;
+            } catch (e) {
+                console.error('Failed to load local history', e);
+            }
+        }
+        return false;
+    }
+
+    // Auto-save & Raw State Sync
+    let saveTimeout;
+    let isProgrammaticUpdate = false;
+
+    const onDidChange = (model, isOriginal) => {
+        // If filters are NOT active, manual edits update the source of truth (raw)
+        if (!areFiltersActive() && !isProgrammaticUpdate) {
+            if (isOriginal) originalRaw = originalModel.getValue();
+            else modifiedRaw = modifiedModel.getValue();
+        }
+
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveState, 1000);
+    };
+
+    originalModel.onDidChangeContent(() => onDidChange(originalModel, true));
+    modifiedModel.onDidChangeContent(() => onDidChange(modifiedModel, false));
 
     // --- Event Listeners ---
 
@@ -85,14 +220,20 @@ require(['vs/editor/editor.main'], function () {
         if (e.target.files[0]) {
             const file = e.target.files[0];
             document.getElementById('filename-left').textContent = file.name;
-            readFile(file, (text) => originalModel.setValue(text));
+            readFile(file, (text) => {
+                originalRaw = text;
+                originalModel.setValue(text);
+            });
         }
     });
     document.getElementById('file-right').addEventListener('change', (e) => {
         if (e.target.files[0]) {
             const file = e.target.files[0];
             document.getElementById('filename-right').textContent = file.name;
-            readFile(file, (text) => modifiedModel.setValue(text));
+            readFile(file, (text) => {
+                modifiedRaw = text;
+                modifiedModel.setValue(text);
+            });
         }
     });
 
@@ -101,51 +242,48 @@ require(['vs/editor/editor.main'], function () {
         if (e.target.value) {
             document.getElementById('filename-left').textContent = 'URL Loaded';
             const text = await fetchJson(e.target.value);
-            if (text) originalModel.setValue(text);
+            if (text) {
+                originalRaw = text;
+                originalModel.setValue(text);
+            }
         }
     });
     document.getElementById('url-right').addEventListener('change', async (e) => {
         if (e.target.value) {
             document.getElementById('filename-right').textContent = 'URL Loaded';
             const text = await fetchJson(e.target.value);
-            if (text) modifiedModel.setValue(text);
+            if (text) {
+                modifiedRaw = text;
+                modifiedModel.setValue(text);
+            }
         }
     });
 
     // Toolbar Actions
     document.getElementById('format-btn').addEventListener('click', () => {
-        const originalVal = originalModel.getValue();
-        const modifiedVal = modifiedModel.getValue();
+        isProgrammaticUpdate = true;
+        // Always filter from RAW source
+        if (originalRaw.trim()) originalModel.setValue(applyAdvancedFilters(originalRaw));
+        if (modifiedRaw.trim()) modifiedModel.setValue(applyAdvancedFilters(modifiedRaw));
+        isProgrammaticUpdate = false;
+    });
 
-        // Try to format original
-        try {
-            if (originalVal.trim()) {
-                const obj = JSON.parse(originalVal);
-                const sorted = sortObject(obj);
-                originalModel.setValue(JSON.stringify(sorted, null, 4));
-            }
-        } catch (e) {
-            console.warn('Left side is not valid JSON');
-        }
-
-        // Try to format modified
-        try {
-            if (modifiedVal.trim()) {
-                const obj = JSON.parse(modifiedVal);
-                const sorted = sortObject(obj);
-                modifiedModel.setValue(JSON.stringify(sorted, null, 4));
-            }
-        } catch (e) {
-            console.warn('Right side is not valid JSON');
-        }
+    document.getElementById('apply-filters-btn').addEventListener('click', () => {
+        document.getElementById('format-btn').click();
     });
 
     document.getElementById('swap-btn').addEventListener('click', () => {
-        const temp = originalModel.getValue();
-        originalModel.setValue(modifiedModel.getValue());
-        modifiedModel.setValue(temp);
+        // Swap RAW
+        const tempRaw = originalRaw;
+        originalRaw = modifiedRaw;
+        modifiedRaw = tempRaw;
 
-        // Swap filenames too
+        // Swap Editor
+        const tempVal = originalModel.getValue();
+        originalModel.setValue(modifiedModel.getValue());
+        modifiedModel.setValue(tempVal);
+
+        // Swap filenames
         const leftName = document.getElementById('filename-left').textContent;
         const rightName = document.getElementById('filename-right').textContent;
         document.getElementById('filename-left').textContent = rightName;
@@ -153,10 +291,13 @@ require(['vs/editor/editor.main'], function () {
     });
 
     document.getElementById('clear-btn').addEventListener('click', () => {
+        originalRaw = '';
+        modifiedRaw = '';
         originalModel.setValue('');
         modifiedModel.setValue('');
         document.getElementById('filename-left').textContent = '';
         document.getElementById('filename-right').textContent = '';
+        localStorage.removeItem('jsonComparatorState');
     });
 
     let isSideBySide = true;
@@ -240,6 +381,24 @@ require(['vs/editor/editor.main'], function () {
                 document.getElementById('filename-left').textContent = files[0].name;
                 readFile(files[0], (text) => originalModel.setValue(text));
             }
+        }
+    });
+
+    // Theme Selector
+    document.getElementById('theme-select').addEventListener('change', (e) => {
+        const theme = e.target.value;
+
+        // Update Body Class
+        document.body.classList.remove('light-theme', 'warm-theme');
+        if (theme !== 'dark') {
+            document.body.classList.add(`${theme}-theme`);
+        }
+
+        // Update Monaco Theme
+        if (theme === 'dark') {
+            monaco.editor.setTheme('vs-dark');
+        } else {
+            monaco.editor.setTheme('vs');
         }
     });
 });
