@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,15 +10,51 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="app-container">
         <header>
-            <h1>JSON Comparator</h1>
-            <p>Compare JSON files side-by-side with advanced diffing.</p>
+            <div class="header-left">
+                <h1>JSON Comparator</h1>
+            </div>
+            <div class="header-right">
+                <button id="share-btn" class="btn secondary">Share</button>
+                <a href="https://github.com/anvsingh/json-comparator" target="_blank" class="github-link">GitHub</a>
+            </div>
         </header>
-        
+
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <label class="file-input-label btn secondary">
+                    Upload Left
+                    <input type="file" id="file-left" accept=".json,.txt">
+                </label>
+                <span id="filename-left" class="filename-display"></span>
+                <input type="text" id="url-left" placeholder="Enter URL for Left JSON" class="url-input">
+            </div>
+
+            <div class="toolbar-actions">
+                <button id="format-btn" class="btn primary" title="Format & Sort Keys">Format & Sort</button>
+                <button id="swap-btn" class="btn secondary" title="Swap Sides">Swap ⇄</button>
+                <button id="clear-btn" class="btn secondary" title="Clear All">Clear</button>
+                <button id="view-toggle-btn" class="btn secondary" title="Toggle Split/Inline View">Split View</button>
+            </div>
+
+            <div class="toolbar-group">
+                <input type="text" id="url-right" placeholder="Enter URL for Right JSON" class="url-input">
+                <span id="filename-right" class="filename-display"></span>
+                <label class="file-input-label btn secondary">
+                    Upload Right
+                    <input type="file" id="file-right" accept=".json,.txt">
+                </label>
+            </div>
+        </div>
+
         <main>
             <div id="editor-container"></div>
+            <div id="drag-overlay" class="hidden">
+                <div class="drag-message">Drop JSON files here</div>
+            </div>
         </main>
 
         <footer>
@@ -29,4 +66,5 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

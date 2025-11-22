@@ -1,10 +1,14 @@
 :root {
     --bg-color: #0f111a;
     --header-bg: #1a1d2d;
+    --toolbar-bg: #23273a;
     --text-primary: #e6e6e6;
     --text-secondary: #a0a0a0;
     --accent-color: #6366f1;
+    --accent-hover: #4f46e5;
     --border-color: #2d3142;
+    --input-bg: #131620;
+    --success-color: #10b981;
 }
 
 * {
@@ -27,9 +31,10 @@ body {
     height: 100%;
 }
 
+/* Header */
 header {
     background-color: var(--header-bg);
-    padding: 1rem 2rem;
+    padding: 0.75rem 1.5rem;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
@@ -37,16 +42,125 @@ header {
 }
 
 header h1 {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-primary);
 }
 
-header p {
-    font-size: 0.875rem;
+.github-link {
     color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    margin-left: 1rem;
 }
 
+.github-link:hover {
+    color: var(--text-primary);
+}
+
+/* Toolbar */
+.toolbar {
+    background-color: var(--toolbar-bg);
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Inputs */
+.url-input {
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    width: 200px;
+    transition: border-color 0.2s;
+}
+
+.url-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.file-input-label {
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.file-input-label input[type="file"] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 100%;
+    min-height: 100%;
+    font-size: 100px;
+    text-align: right;
+    filter: alpha(opacity=0);
+    opacity: 0;
+    outline: none;
+    background: white;
+    cursor: inherit;
+    display: block;
+}
+
+.filename-display {
+    font-size: 0.75rem;
+    color: var(--accent-color);
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.btn.primary {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn.primary:hover {
+    background-color: var(--accent-hover);
+}
+
+.btn.secondary {
+    background-color: var(--input-bg);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.btn.secondary:hover {
+    background-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Main Editor Area */
 main {
     flex: 1;
     position: relative;
@@ -56,6 +170,36 @@ main {
 #editor-container {
     width: 100%;
     height: 100%;
+}
+
+/* Drag Overlay */
+#drag-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(15, 17, 26, 0.85);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+    transition: opacity 0.2s;
+}
+
+#drag-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.drag-message {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--accent-color);
+    border: 3px dashed var(--accent-color);
+    padding: 3rem;
+    border-radius: 1rem;
 }
 
 footer {
